@@ -13,7 +13,7 @@
 
 #define PERROR(s) fprintf(stderr, "*** %s: %s\r", (s), strerror(errno))
 #define USAGE()                                                                \
-  fputs("Usage: axpty [-p <paclen>] <filename> <argv[0]> ...\r", stderr)
+  fputs("Usage: axpty [-p <paclen>] [-n] <path> <argv[0]> ...\r", stderr)
 
 void sigchld_handler(int sig) {
   /* fprintf(stderr, "Caught SIGCHLD, exiting...\r"); */
@@ -55,14 +55,18 @@ int main(int argc, char **argv) {
   int len;
   int pid;
   int paclen = 256;
+  int notranslate = 0;
   fd_set fdset;
   struct timeval tv;
   struct termios term;
 
-  while ((len = getopt(argc, argv, "p:")) != -1) {
+  while ((len = getopt(argc, argv, "p:n")) != -1) {
     switch (len) {
     case 'p':
       paclen = atoi(optarg);
+      break;
+    case 'n':
+      notranslate = 1;
       break;
     case ':':
     case '?':
@@ -142,7 +146,8 @@ int main(int argc, char **argv) {
       }
       if (len == 0)
         break;
-      convert_cr_lf(buf, len);
+      if (!notranslate)
+        convert_cr_lf(buf, len);
       write(parentpty, buf, len);
     }
     if (FD_ISSET(parentpty, &fdset)) {
@@ -153,7 +158,8 @@ int main(int argc, char **argv) {
       }
       if (len == 0)
         break;
-      convert_lf_cr(buf, &len);
+      if (!notranslate)
+        convert_lf_cr(buf, &len);
       fwrite(buf, 1, len, stdout);
     }
   }
